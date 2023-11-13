@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Laboratory work 1</title>
+        <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"
+        integrity="sha512-zhHQR0/H5SEBL3Wn6yYSaTTZej12z0hVZKOv3TwCUXT1z5qeqGcXJLLrbERYRScEDDpYIJhPC1fk31gqR783iQ=="
+        crossorigin="anonymous"
+        defer
+      ></script>
+      <script src="webgl-demo.js" type="module"></script>
+        <style>
+           body {
+              margin: 0;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+               background-color: darkslategray;
+           }
+  
+       </style>
+     </head>
+<body>
+
+<canvas id="myCanvas" width="500" height="500"></canvas>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+      var canvas = document.getElementById("myCanvas");
+      var gl = canvas.getContext("webgl");
+
+      if (!gl) {
+        console.error("Unable to initialize WebGL. Your browser may not support it.");
+        return;
+      }
+
+      // Vertex shader program
+      var vsSource = `
+        attribute vec4 aVertexPosition;
+        uniform mat4 uModelViewMatrix;
+        void main(void) {
+          gl_Position = uModelViewMatrix * aVertexPosition;
+        }
+      `;
+
+      // Fragment shader program
+      var fsSource = `
+        precision mediump float;
+        uniform vec3 uColor;  // RGB color uniform
+        void main(void) {
+          gl_FragColor = vec4(uColor, 1.0);
+        }
+      `;
+
+      function initShaderProgram(gl, vsSource, fsSource) {
+        var vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+        var fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+        var shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+          console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+          return null;
+        }
+
+        return shaderProgram;
+      }
+
+      function loadShader(gl, type, source) {
+        var shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+
+        return shader;
+      }
+
+      var shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+
+      var programInfo = {
+        program: shaderProgram,
+        attribLocations: {
+          vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+        },
+        uniformLocations: {
+          modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+          color: gl.getUniformLocation(shaderProgram, 'uColor'),  // RGB color uniform location
+        },
+      };
+
+      // Define the vertices of the object using Triangle Fan
+      const vertices = new Float32Array([
+        0, 0,
+        0.25, -0.43,
+        0.5, 0.0,
+        0.25, 0.43,
+        -0.25, 0.43,
+        -0.5, 0.0,
+        -0.25, -0.43,
+        0.25, -0.43,
+      ]);
+
+      var translationY = 0;
+      var directionY = 0.01;
+
+      var vertexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+      gl.useProgram(programInfo.program);
+
+      function drawScene() {
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        var modelViewMatrix = new Float32Array([
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0, translationY, 0, 1,
+        ]);
+
+        gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+
+        // Set RGB color uniform
+        var rgbColor = [Math.sin(Date.now() * 0.001) * 0.5 + 0.5, Math.sin(Date.now() * 0.002) * 0.5 + 0.5, Math.sin(Date.now() * 0.003) * 0.5 + 0.5];
+        gl.uniform3fv(programInfo.uniformLocations.color, rgbColor);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, vertices.length / 2);
+
+        translationY += directionY;
+
+        if (translationY > 0.6 || translationY < -0.6) {
+          directionY *= -1;
+        }
+
+        requestAnimationFrame(drawScene);
+      }
+
+      drawScene();
+    });
+  </script>
+</body>
+</html>
